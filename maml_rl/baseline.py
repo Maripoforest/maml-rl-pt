@@ -19,12 +19,17 @@ class LinearFeatureBaseline(nn.Module):
 		self._reg_coeff = reg_coeff
 		self.MLP = False
 		self.build_feature_extractor()
+		self.build_optimizer()
 		self.epsilon = 0.1
 		self.optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
 
-	
-	def update_params(self, episodes):
+	def build_optimizer(self):
+		if self.MLP:
+			self.update = self.nnstep
+		else:
+			self.update = self.fit
 
+	def nnstep(self, episodes):
 		_values = self.forward(episodes)
 		# _values.requires_grad_()
 		values = _values.flatten()

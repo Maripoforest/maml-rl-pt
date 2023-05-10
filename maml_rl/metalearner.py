@@ -62,7 +62,7 @@ class MetaLearner:
 		"""
 		
 		# self.baseline.fit(episodes)
-		self.baseline.update_params(episodes)
+		self.baseline.update(episodes)
 		# Get the loss on the training episodes
 		loss = self.inner_loss(episodes)
 		# Fit the baseline to the training episodes
