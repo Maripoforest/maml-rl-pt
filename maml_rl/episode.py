@@ -105,7 +105,6 @@ class BatchEpisodes:
 		# the estimation at the end of the episode
 		values = values.squeeze(2).detach() # [200, 20]
 		values = F.pad(values * self.mask, (0, 0, 0, 1)) # [201, 20]
-		print(vvv)
 		deltas = self.rewards + self.gamma * values[1:] - values[:-1] # [200, 20]
 		advantages = torch.zeros_like(deltas).float() # [200, 20]
 		gae = torch.zeros_like(deltas[0]).float() # [20]

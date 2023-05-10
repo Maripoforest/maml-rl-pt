@@ -52,7 +52,7 @@ class MetaLearner:
 			log_probs = torch.sum(log_probs, dim=2)
 		loss = -weighted_mean(log_probs * advantages, weights=episodes.mask)
 
-		return loss, values + advantages
+		return loss
 
 	def adapt(self, episodes, first_order=False):
 		"""
@@ -60,10 +60,11 @@ class MetaLearner:
 		sampled trajectories `episodes`, with a one-step gradient update [1].
 		"""
 		
+		# self.baseline.fit(episodes)
+		self.baseline.update_params(episodes)
 		# Get the loss on the training episodes
 		loss = self.inner_loss(episodes)
 		# Fit the baseline to the training episodes
-		self.baseline.fit(episodes)
 		# Get the new parameters after a one-step gradient update
 		params = self.policy.update_params(loss, step_size=self.fast_lr, first_order=first_order)
 

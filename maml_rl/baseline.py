@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.nn import functional as F
 
 
 class LinearFeatureBaseline(nn.Module):
@@ -22,10 +23,14 @@ class LinearFeatureBaseline(nn.Module):
 		# self.linear.weight.data.zero_()
 
 		# 2 Layer MLP
-		self.linear = nn.Sequential()
+		self.linear = nn.Sequential(
+			nn.Linear(input_size, input_size),
+			nn.ReLU(),
+			nn.Linear(input_size, 1)
+		)
 		
 		self.epsilon = 0.1
-		self.optimizer = torch.optim.Adam(self.parameters(), lr=reg_coeff)
+		self.optimizer = torch.optim.Adam(self.parameters(), lr=2e-5)
 
 	@property
 	def feature_size(self):
@@ -45,8 +50,25 @@ class LinearFeatureBaseline(nn.Module):
 		ones = episodes.mask.unsqueeze(2)
 		observations = episodes.observations * ones
 		# observations = episodes.nopertobs * ones
-	
+		
 		return observations
+	
+	def update_params(self, episodes):
+		
+		_values = self.forward(episodes)
+		_values.requires_grad_()
+		values = _values.flatten()
+
+		# Bellman return
+		returns = episodes.returns.flatten()
+
+		# TD return
+		# returns = episodes.gae(_values).flatten() + values
+
+		loss = F.mse_loss(returns, values)
+		self.optimizer.zero_grad()
+		loss.backward()
+		self.optimizer.step()
 
 	def fit(self, episodes):
 		# sequence_length * batch_size x feature_size
@@ -74,7 +96,7 @@ class LinearFeatureBaseline(nn.Module):
 		self.linear.weight.data = coeffs.data.t()
 
 	def forward(self, episodes):
-		features = self._feature(episodes)
+		
 
 		# IBP Lower Bound
 		# =================================
@@ -89,8 +111,12 @@ class LinearFeatureBaseline(nn.Module):
 		# value = out
 		# =================================
 
-		value = self.linear(features)
-		return value
+		# features = self._feature(episodes)
+		# values = self.linear(features)
+
+		features = self._MLPfeature(episodes)
+		values = self.linear(features)
+		return values
 
 	def compute_bounds(self, x_bounds, layer):
 		l = torch.full_like(x_bounds, -self.epsilon)
