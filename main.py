@@ -11,6 +11,7 @@ from maml_rl.baseline import LinearFeatureBaseline
 from maml_rl.sampler import BatchSampler
 
 from tensorboardX import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 
 
 def total_rewards(episodes_rewards, aggregation=torch.mean):
@@ -72,7 +73,7 @@ def main(args):
 		                  total_rewards([ep.rewards for ep, _ in episodes]), batch)
 		writer.add_scalar('total_rewards/after_update',
 		                  total_rewards([ep.rewards for _, ep in episodes]), batch)
-
+		writer.close()
 
 		# # Save policy network
 		with open(os.path.join(save_folder, 'policy-{0}.pt'.format(batch)), 'wb') as f:

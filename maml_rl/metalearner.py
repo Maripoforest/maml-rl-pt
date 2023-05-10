@@ -5,7 +5,6 @@ from    torch.distributions.kl import kl_divergence
 from    maml_rl.utils.torch_utils import weighted_mean, detach_distribution, weighted_normalize
 from    maml_rl.utils.optimization import conjugate_gradient
 
-
 class MetaLearner:
 	"""
 	Meta-learner
@@ -53,17 +52,18 @@ class MetaLearner:
 			log_probs = torch.sum(log_probs, dim=2)
 		loss = -weighted_mean(log_probs * advantages, weights=episodes.mask)
 
-		return loss
+		return loss, values + advantages
 
 	def adapt(self, episodes, first_order=False):
 		"""
 		Adapt the parameters of the policy network to a new task, from
 		sampled trajectories `episodes`, with a one-step gradient update [1].
 		"""
-		# Fit the baseline to the training episodes
-		self.baseline.fit(episodes)
+		
 		# Get the loss on the training episodes
 		loss = self.inner_loss(episodes)
+		# Fit the baseline to the training episodes
+		self.baseline.fit(episodes)
 		# Get the new parameters after a one-step gradient update
 		params = self.policy.update_params(loss, step_size=self.fast_lr, first_order=first_order)
 

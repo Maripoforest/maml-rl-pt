@@ -16,9 +16,16 @@ class LinearFeatureBaseline(nn.Module):
 		super(LinearFeatureBaseline, self).__init__()
 		self.input_size = input_size
 		self._reg_coeff = reg_coeff
-		self.linear = nn.Linear(self.feature_size, 1, bias=False)
-		self.linear.weight.data.zero_()
+
+		# Duan et al 2016a
+		# self.linear = nn.Linear(self.feature_size, 1, bias=False)
+		# self.linear.weight.data.zero_()
+
+		# 2 Layer MLP
+		self.linear = nn.Sequential()
+		
 		self.epsilon = 0.1
+		self.optimizer = torch.optim.Adam(self.parameters(), lr=reg_coeff)
 
 	@property
 	def feature_size(self):
@@ -33,6 +40,13 @@ class LinearFeatureBaseline(nn.Module):
 
 		return torch.cat([observations, observations ** 2,
 		                  al, al ** 2, al ** 3, ones], dim=2)
+	
+	def _MLPfeature(self, episodes):
+		ones = episodes.mask.unsqueeze(2)
+		observations = episodes.observations * ones
+		# observations = episodes.nopertobs * ones
+	
+		return observations
 
 	def fit(self, episodes):
 		# sequence_length * batch_size x feature_size
