@@ -17,46 +17,16 @@ class LinearFeatureBaseline(nn.Module):
 		super(LinearFeatureBaseline, self).__init__()
 		self.input_size = input_size
 		self._reg_coeff = reg_coeff
-
-		# Duan et al 2016a
-		# self.linear = nn.Linear(self.feature_size, 1, bias=False)
-		# self.linear.weight.data.zero_()
-
-		# 2 Layer MLP
-		self.linear = nn.Sequential(
-			nn.Linear(input_size, input_size),
-			nn.ReLU(),
-			nn.Linear(input_size, 1)
-		)
-		
+		self.MLP = False
+		self.build_feature_extractor()
 		self.epsilon = 0.1
-		self.optimizer = torch.optim.Adam(self.parameters(), lr=2e-5)
+		self.optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
 
-	@property
-	def feature_size(self):
-		return 2 * self.input_size + 4
-
-	def _feature(self, episodes):
-		ones = episodes.mask.unsqueeze(2)
-		observations = episodes.observations * ones
-		# observations = episodes.nopertobs * ones
-		cum_sum = torch.cumsum(ones, dim=0) * ones
-		al = cum_sum / 100.0
-
-		return torch.cat([observations, observations ** 2,
-		                  al, al ** 2, al ** 3, ones], dim=2)
-	
-	def _MLPfeature(self, episodes):
-		ones = episodes.mask.unsqueeze(2)
-		observations = episodes.observations * ones
-		# observations = episodes.nopertobs * ones
-		
-		return observations
 	
 	def update_params(self, episodes):
-		
+
 		_values = self.forward(episodes)
-		_values.requires_grad_()
+		# _values.requires_grad_()
 		values = _values.flatten()
 
 		# Bellman return
@@ -96,8 +66,6 @@ class LinearFeatureBaseline(nn.Module):
 		self.linear.weight.data = coeffs.data.t()
 
 	def forward(self, episodes):
-		
-
 		# IBP Lower Bound
 		# =================================
 		# out = torch.empty((0,))
@@ -111,10 +79,7 @@ class LinearFeatureBaseline(nn.Module):
 		# value = out
 		# =================================
 
-		# features = self._feature(episodes)
-		# values = self.linear(features)
-
-		features = self._MLPfeature(episodes)
+		features = self.feature(episodes)
 		values = self.linear(features)
 		return values
 
@@ -123,9 +88,53 @@ class LinearFeatureBaseline(nn.Module):
 		u = torch.full_like(x_bounds, self.epsilon)
 		l += x_bounds
 		u += x_bounds
+		# l.to(torch.device('cuda'))
+		# u.to(torch.device('cuda'))
 		W, b = layer.weight, layer.bias
 		# l_out = torch.matmul(W.clamp(min=0), l) + torch.matmul(W.clamp(max=0), u) + b
 		# u_out = torch.matmul(W.clamp(min=0), u) + torch.matmul(W.clamp(max=0), l) + b
 		l_out = torch.matmul(W.clamp(min=0), l) + torch.matmul(W.clamp(max=0), u)
 		u_out = torch.matmul(W.clamp(min=0), u) + torch.matmul(W.clamp(max=0), l)
 		return l_out, u_out
+	
+	def build_net(self):
+		if self.MLP:
+			self.linear = nn.Sequential(
+			nn.Linear(self.input_size, self.input_size),
+			nn.ReLU(),
+			nn.Linear(self.input_size, 1)
+		)
+		else:
+			# Duan et al 2016a
+			self.linear = nn.Linear(self.feature_size, 1, bias=False)
+			self.linear.weight.data.zero_()
+
+	@property
+	def feature_size(self):
+		return 2 * self.input_size + 4
+
+	def build_feature_extractor(self):
+		self.build_net()
+		if isinstance(self.linear, nn.Linear):
+			print("linearfeature")
+			self.feature = self._feature
+		elif isinstance(self.linear, nn.Sequential):
+			print("mlpfeature")
+			self.feature = self._MLPfeature
+		else:
+			print("not a valid extractor")
+
+	def _feature(self, episodes):
+		ones = episodes.mask.unsqueeze(2)
+		observations = episodes.observations * ones
+		# observations = episodes.nopertobs * ones
+		cum_sum = torch.cumsum(ones, dim=0) * ones
+		al = cum_sum / 100.0
+		return torch.cat([observations, observations ** 2,
+		                  al, al ** 2, al ** 3, ones], dim=2)
+	
+	def _MLPfeature(self, episodes):
+		ones = episodes.mask.unsqueeze(2)
+		observations = episodes.observations * ones
+		# observations = episodes.nopertobs * ones
+		return observations

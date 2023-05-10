@@ -68,7 +68,7 @@ class BatchSampler:
 
 				# Perturbed model
 				# =======================
-				# perturbations = np.random.uniform(-1, 1, observations.shape)
+				# perturbations = np.random.uniform(-0.1, 0.1, observations.shape)
 				# observations += perturbations
 				# =======================
 				
