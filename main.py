@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import json
 from tqdm import trange
+import wandb
 
 from maml_rl.metalearner import MetaLearner
 from maml_rl.policies import CategoricalMLPPolicy, NormalMLPPolicy
@@ -23,6 +24,13 @@ def total_rewards(episodes_rewards, aggregation=torch.mean):
 def main(args):
 
 	args.output_folder = args.env_name
+
+	wandb.init(project="maml",
+	    config={
+		    "lr": 1e-5,
+		    "mlp": True,
+		    "return": "Bellman"
+		})
 
 	# TODO
 	continuous_actions = (args.env_name in ['AntVel-v1', 'AntDir-v1',
@@ -62,7 +70,7 @@ def main(args):
 	for batch in trange(args.num_batches): # number of epoches
 
 		tasks = sampler.sample_tasks(num_tasks=args.meta_batch_size)
-		episodes = metalearner.sample(tasks, first_order=args.first_order)
+		episodes, value_losses = metalearner.sample(tasks, first_order=args.first_order)
 
 		metalearner.step(episodes, max_kl=args.max_kl, cg_iters=args.cg_iters,
 		                 cg_damping=args.cg_damping, ls_max_steps=args.ls_max_steps,
@@ -73,7 +81,14 @@ def main(args):
 		                  total_rewards([ep.rewards for ep, _ in episodes]), batch)
 		writer.add_scalar('total_rewards/after_update',
 		                  total_rewards([ep.rewards for _, ep in episodes]), batch)
+		writer.add_scalar('value_losses', value_losses, batch)
 		writer.close()
+
+		# WandB
+		wandb.log({"reward_before_update": total_rewards([ep.rewards for ep, _ in episodes]),
+	     			"reward_after_update":	total_rewards([ep.rewards for _, ep in episodes]),
+				     "value_loss": value_losses
+				})
 
 		# # Save policy network
 		with open(os.path.join(save_folder, 'policy-{0}.pt'.format(batch)), 'wb') as f:

@@ -62,14 +62,14 @@ class MetaLearner:
 		"""
 		
 		# self.baseline.fit(episodes)
-		self.baseline.update(episodes)
+		value_loss = self.baseline.update(episodes)
 		# Get the loss on the training episodes
 		loss = self.inner_loss(episodes)
 		# Fit the baseline to the training episodes
 		# Get the new parameters after a one-step gradient update
 		params = self.policy.update_params(loss, step_size=self.fast_lr, first_order=first_order)
 
-		return params
+		return params, value_loss
 
 	def sample(self, tasks, first_order=False):
 		"""
@@ -77,15 +77,17 @@ class MetaLearner:
 		for all the tasks `tasks`.
 		"""
 		episodes = []
+		value_losses = 0
 		for task in tasks:
 			self.sampler.reset_task(task)
 			train_episodes = self.sampler.sample(self.policy, gamma=self.gamma, device=self.device)
 
-			params = self.adapt(train_episodes, first_order=first_order)
-
+			params, value_loss = self.adapt(train_episodes, first_order=first_order)
+			value_losses += value_loss
 			valid_episodes = self.sampler.sample(self.policy, params=params, gamma=self.gamma, device=self.device)
 			episodes.append((train_episodes, valid_episodes))
-		return episodes
+		value_losses /= len(tasks)
+		return episodes, value_losses
 
 	def kl_divergence(self, episodes, old_pis=None):
 		kls = []
@@ -93,7 +95,7 @@ class MetaLearner:
 			old_pis = [None] * len(episodes)
 
 		for (train_episodes, valid_episodes), old_pi in zip(episodes, old_pis):
-			params = self.adapt(train_episodes)
+			params, _ = self.adapt(train_episodes)
 			pi = self.policy(valid_episodes.observations, params=params)
 
 			if old_pi is None:
@@ -132,7 +134,7 @@ class MetaLearner:
 			old_pis = [None] * len(episodes)
 
 		for (train_episodes, valid_episodes), old_pi in zip(episodes, old_pis):
-			params = self.adapt(train_episodes)
+			params, _ = self.adapt(train_episodes)
 
 			with torch.set_grad_enabled(old_pi is None):
 				pi = self.policy(valid_episodes.observations, params=params)

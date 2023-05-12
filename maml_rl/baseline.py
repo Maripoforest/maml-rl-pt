@@ -13,11 +13,12 @@ class LinearFeatureBaseline(nn.Module):
 		(https://arxiv.org/abs/1604.06778)
 	"""
 
-	def __init__(self, input_size, reg_coeff=1e-5):
+	def __init__(self, input_size, reg_coeff=1e-5, hidden_size=100):
 		super(LinearFeatureBaseline, self).__init__()
 		self.input_size = input_size
 		self._reg_coeff = reg_coeff
-		self.MLP = False
+		self.hidden_size = hidden_size
+		self.MLP = True
 		self.build_feature_extractor()
 		self.build_optimizer()
 		self.epsilon = 0.1
@@ -44,6 +45,7 @@ class LinearFeatureBaseline(nn.Module):
 		self.optimizer.zero_grad()
 		loss.backward()
 		self.optimizer.step()
+		return loss
 
 	def fit(self, episodes):
 		# sequence_length * batch_size x feature_size
@@ -69,6 +71,7 @@ class LinearFeatureBaseline(nn.Module):
 			                   'matrix) is not full-rank, regardless of the regularization '
 			                   '(maximum regularization: {0}).'.format(reg_coeff))
 		self.linear.weight.data = coeffs.data.t()
+		return 0
 
 	def forward(self, episodes):
 		# IBP Lower Bound
@@ -105,9 +108,9 @@ class LinearFeatureBaseline(nn.Module):
 	def build_net(self):
 		if self.MLP:
 			self.linear = nn.Sequential(
-			nn.Linear(self.input_size, self.input_size),
+			nn.Linear(self.feature_size, self.hidden_size),
 			nn.ReLU(),
-			nn.Linear(self.input_size, 1)
+			nn.Linear(self.hidden_size, 1)
 		)
 		else:
 			# Duan et al 2016a
@@ -125,7 +128,8 @@ class LinearFeatureBaseline(nn.Module):
 			self.feature = self._feature
 		elif isinstance(self.linear, nn.Sequential):
 			print("mlpfeature")
-			self.feature = self._MLPfeature
+			# self.feature = self._MLPfeature
+			self.feature = self._feature
 		else:
 			print("not a valid extractor")
 
