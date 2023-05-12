@@ -41,8 +41,8 @@ class MetaLearner:
 		loss is REINFORCE with baseline [2], computed on advantages estimated
 		with Generalized Advantage Estimation (GAE, [3]).
 		"""
-		with torch.no_grad():
-			values = self.baseline(episodes)
+		
+		values = self.baseline(episodes)
 		advantages = episodes.gae(values, tau=self.tau)
 		advantages = weighted_normalize(advantages, weights=episodes.mask)
 
@@ -65,7 +65,6 @@ class MetaLearner:
 		value_loss = self.baseline.update(episodes)
 		# Get the loss on the training episodes
 		loss = self.inner_loss(episodes)
-		# Fit the baseline to the training episodes
 		# Get the new parameters after a one-step gradient update
 		params = self.policy.update_params(loss, step_size=self.fast_lr, first_order=first_order)
 
@@ -142,8 +141,8 @@ class MetaLearner:
 
 				if old_pi is None:
 					old_pi = detach_distribution(pi)
-				with torch.no_grad():
-					values = self.baseline(valid_episodes)
+				
+				values = self.baseline(valid_episodes)
 				advantages = valid_episodes.gae(values, tau=self.tau)
 				advantages = weighted_normalize(advantages,
 				                                weights=valid_episodes.mask)

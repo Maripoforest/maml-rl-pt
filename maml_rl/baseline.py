@@ -13,12 +13,12 @@ class LinearFeatureBaseline(nn.Module):
 		(https://arxiv.org/abs/1604.06778)
 	"""
 
-	def __init__(self, input_size, reg_coeff=1e-5, hidden_size=100):
+	def __init__(self, input_size, reg_coeff=1e-5, is_mlp=True):
 		super(LinearFeatureBaseline, self).__init__()
 		self.input_size = input_size
+		self.hidden_size = 100
 		self._reg_coeff = reg_coeff
-		self.hidden_size = hidden_size
-		self.MLP = True
+		self.MLP = is_mlp
 		self.build_feature_extractor()
 		self.build_optimizer()
 		self.epsilon = 0.1
@@ -39,7 +39,7 @@ class LinearFeatureBaseline(nn.Module):
 		returns = episodes.returns.flatten()
 
 		# TD return
-		# returns = episodes.gae(_values).flatten() + values
+		returns = episodes.gae(_values).flatten() + values
 
 		loss = F.mse_loss(returns, values)
 		self.optimizer.zero_grad()
@@ -106,11 +106,17 @@ class LinearFeatureBaseline(nn.Module):
 		return l_out, u_out
 	
 	def build_net(self):
+		# if self.MLP:
+		# 	self.linear = nn.Sequential(
+		# 	nn.Linear(self.input_size, self.input_size),
+		# 	nn.ReLU(),
+		# 	nn.Linear(self.input_size, 1)
+		# )
 		if self.MLP:
 			self.linear = nn.Sequential(
-			nn.Linear(self.feature_size, self.hidden_size),
+			nn.Linear(self.input_size, self.input_size),
 			nn.ReLU(),
-			nn.Linear(self.hidden_size, 1)
+			nn.Linear(self.input_size, 1)
 		)
 		else:
 			# Duan et al 2016a

@@ -62,7 +62,7 @@ def main(args):
 			sampler.envs.action_space.n,
 			hidden_sizes=(args.hidden_size,) * args.num_layers)
 
-	baseline = LinearFeatureBaseline( int(np.prod(sampler.envs.observation_space.shape)))
+	baseline = LinearFeatureBaseline(input_size=int(np.prod(sampler.envs.observation_space.shape)), is_mlp=True)
 
 	metalearner = MetaLearner(sampler, policy, baseline, gamma=args.gamma,
 	                          fast_lr=args.fast_lr, tau=args.tau, device=args.device)
