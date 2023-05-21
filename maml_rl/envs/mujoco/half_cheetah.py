@@ -70,9 +70,13 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
 		             reward_ctrl=-ctrl_cost, task=self._task)
 		return (observation, reward, done, infos)
 
-	def sample_tasks(self, num_tasks):
-		velocities = self.np_random.uniform(0.0, 2.0, size=(num_tasks,))
-		tasks = [{'velocity': velocity} for velocity in velocities]
+	# def sample_tasks(self, num_tasks):
+	# 	velocities = self.np_random.uniform(0.0, 2.0, size=(num_tasks,))
+	# 	tasks = [{'velocity': velocity} for velocity in velocities]
+	# 	return tasks
+
+	def sample_tasks(self, _tasks):
+		tasks = [{'velocity': velocity} for velocity in _tasks]
 		return tasks
 
 	def reset_task(self, task):
@@ -121,11 +125,13 @@ class HalfCheetahDirEnv(HalfCheetahEnv):
 		             reward_ctrl=-ctrl_cost, task=self._task)
 		return (observation, reward, done, infos)
 
-	def sample_tasks(self, num_tasks):
-		# directions = 2 * self.np_random.binomial(1, p=0.5, size=(num_tasks,)) - 1
-		directions = np.array([1, -1,  1, -1,  1,  1, -1, -1,  1, -1, -1,  1,  1,  1,  1, -1,  1,  1,  1, -1, -1, -1, -1, -1,  1,  1, -1,  1,
-			 					 -1, -1, -1, -1,  1, -1,  1,  1, -1,  1, -1, 1])
-		tasks = [{'direction': direction} for direction in directions]
+	# def sample_tasks(self, num_tasks):
+	# 	directions = 2 * self.np_random.binomial(1, p=0.5, size=(num_tasks,)) - 1
+	# 	tasks = [{'direction': direction} for direction in directions]
+	# 	return tasks
+	
+	def sample_tasks(self, _tasks):
+		tasks = [{'direction': direction} for direction in _tasks]
 		return tasks
 
 	def reset_task(self, task):

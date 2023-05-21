@@ -16,7 +16,7 @@ class LinearFeatureBaseline(nn.Module):
 	def __init__(self, input_size, reg_coeff=1e-5, is_mlp=True, lr=1e-5):
 		super(LinearFeatureBaseline, self).__init__()
 		self.input_size = input_size
-		self.hidden_size = 100
+		self.hidden_size = 32
 		self._reg_coeff = reg_coeff
 		self.MLP = is_mlp
 		self.build_feature_extractor()

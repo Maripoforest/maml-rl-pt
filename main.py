@@ -24,13 +24,14 @@ def total_rewards(episodes_rewards, aggregation=torch.mean):
 def main(args):
 
 	args.output_folder = args.env_name
+	seed = 42
+	np.random.seed(seed)
+	task_rand = 2 * np.random.binomial(1, p=0.5, size=(1500, args.meta_batch_size)) - 1
 
 	wandb.init(project="maml",
 	    config={
 		    "lr": args.critic_lr,
-		    "mlp": 2,
-		    "return": "Bellman",
-		    "linear": False
+		    "mlp": args.mlp,
 		})
 
 	# TODO
@@ -38,7 +39,7 @@ def main(args):
 	                                        'AntPos-v0', 'HalfCheetahVel-v1', 'HalfCheetahDir-v1',
 	                                        '2DNavigation-v0'])
 
-	writer = SummaryWriter('./logs/{0}'.format(args.output_folder))
+	# writer = SummaryWriter('./logs/{0}'.format(args.output_folder))
 	save_folder = './saves/{0}'.format(args.output_folder)
 	if not os.path.exists(save_folder):
 		os.makedirs(save_folder)
@@ -67,7 +68,7 @@ def main(args):
 			hidden_sizes=(args.hidden_size,) * args.num_layers)
 
 	baseline = LinearFeatureBaseline(input_size=int(np.prod(sampler.envs.observation_space.shape)), 
-				  					is_mlp=True, 
+				  					is_mlp=args.mlp, 
 									lr=args.critic_lr)
 
 	metalearner = MetaLearner(sampler, policy, baseline, gamma=args.gamma,
@@ -75,7 +76,7 @@ def main(args):
 
 	for batch in trange(args.num_batches): # number of epoches
 
-		tasks = sampler.sample_tasks(num_tasks=args.meta_batch_size)
+		tasks = sampler.sample_tasks(task_rand[batch])
 		episodes, value_losses = metalearner.sample(tasks, first_order=args.first_order)
 
 		metalearner.step(episodes, max_kl=args.max_kl, cg_iters=args.cg_iters,
@@ -83,12 +84,12 @@ def main(args):
 		                 ls_backtrack_ratio=args.ls_backtrack_ratio)
 
 		# Tensorboard
-		writer.add_scalar('total_rewards/before_update',
-		                  total_rewards([ep.rewards for ep, _ in episodes]), batch)
-		writer.add_scalar('total_rewards/after_update',
-		                  total_rewards([ep.rewards for _, ep in episodes]), batch)
-		writer.add_scalar('value_losses', value_losses, batch)
-		writer.close()
+		# writer.add_scalar('total_rewards/before_update',
+		#                   total_rewards([ep.rewards for ep, _ in episodes]), batch)
+		# writer.add_scalar('total_rewards/after_update',
+		#                   total_rewards([ep.rewards for _, ep in episodes]), batch)
+		# writer.add_scalar('value_losses', value_losses, batch)
+		# writer.close()
 
 		# WandB
 		wandb.log({"reward_before_update": total_rewards([ep.rewards for ep, _ in episodes]),
@@ -158,6 +159,8 @@ if __name__ == '__main__':
 	                    help='lr for the critic network')
 	parser.add_argument('--epsilon', type=float, default=0,
 	                    help='epsilon for l_inf perturbation, 0 for no per')
+	parser.add_argument('--mlp', type=float, default=1,
+	                    help='to use mlp or linear fitting')
 
 	# Miscellaneous
 	parser.add_argument('--output-folder', type=str, default='HalfCheetahDir-v1',

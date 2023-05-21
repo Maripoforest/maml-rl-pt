@@ -146,6 +146,6 @@ class BatchSampler:
 		reset = self.envs.reset_task(tasks)
 		return all(reset)
 
-	def sample_tasks(self, num_tasks):
-		tasks = self._env.unwrapped.sample_tasks(num_tasks)
+	def sample_tasks(self, _tasks):
+		tasks = self._env.unwrapped.sample_tasks(_tasks)
 		return tasks
