@@ -27,9 +27,10 @@ def main(args):
 
 	wandb.init(project="maml",
 	    config={
-		    "lr": 1e-5,
-		    "mlp": True,
-		    "return": "Bellman"
+		    "lr": args.critic_lr,
+		    "mlp": 2,
+		    "return": "Bellman",
+		    "linear": False
 		})
 
 	# TODO
@@ -49,7 +50,10 @@ def main(args):
 		json.dump(config, f, indent=2)
 		print(config)
 
-	sampler = BatchSampler(args.env_name, batch_size=args.fast_batch_size, num_workers=args.num_workers)
+	sampler = BatchSampler(args.env_name, 
+						batch_size=args.fast_batch_size, 
+						num_workers=args.num_workers, 
+						epsilon=args.epsilon)
 
 	if continuous_actions:
 		policy = NormalMLPPolicy(
@@ -62,7 +66,9 @@ def main(args):
 			sampler.envs.action_space.n,
 			hidden_sizes=(args.hidden_size,) * args.num_layers)
 
-	baseline = LinearFeatureBaseline(input_size=int(np.prod(sampler.envs.observation_space.shape)), is_mlp=True)
+	baseline = LinearFeatureBaseline(input_size=int(np.prod(sampler.envs.observation_space.shape)), 
+				  					is_mlp=True, 
+									lr=args.critic_lr)
 
 	metalearner = MetaLearner(sampler, policy, baseline, gamma=args.gamma,
 	                          fast_lr=args.fast_lr, tau=args.tau, device=args.device)
@@ -93,6 +99,8 @@ def main(args):
 		# # Save policy network
 		with open(os.path.join(save_folder, 'policy-{0}.pt'.format(batch)), 'wb') as f:
 			torch.save(policy.state_dict(), f)
+		with open(os.path.join(save_folder, 'value-{0}.pt'.format(batch)), 'wb') as f:
+			torch.save(baseline.linear.state_dict(), f)
 
 		# print(batch, total_rewards([ep.rewards for ep, _ in episodes]), total_rewards([ep.rewards for _, ep in episodes]))
 
@@ -146,6 +154,10 @@ if __name__ == '__main__':
 	                    help='maximum number of iterations for line search')
 	parser.add_argument('--ls-backtrack-ratio', type=float, default=0.8,
 	                    help='maximum number of iterations for line search')
+	parser.add_argument('--critic-lr', type=float, default=1e-5,
+	                    help='lr for the critic network')
+	parser.add_argument('--epsilon', type=float, default=0,
+	                    help='epsilon for l_inf perturbation, 0 for no per')
 
 	# Miscellaneous
 	parser.add_argument('--output-folder', type=str, default='HalfCheetahDir-v1',

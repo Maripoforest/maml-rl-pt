@@ -13,7 +13,7 @@ class LinearFeatureBaseline(nn.Module):
 		(https://arxiv.org/abs/1604.06778)
 	"""
 
-	def __init__(self, input_size, reg_coeff=1e-5, is_mlp=True):
+	def __init__(self, input_size, reg_coeff=1e-5, is_mlp=True, lr=1e-5):
 		super(LinearFeatureBaseline, self).__init__()
 		self.input_size = input_size
 		self.hidden_size = 100
@@ -22,7 +22,7 @@ class LinearFeatureBaseline(nn.Module):
 		self.build_feature_extractor()
 		self.build_optimizer()
 		self.epsilon = 0.1
-		self.optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
+		self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
 
 	def build_optimizer(self):
 		if self.MLP:
@@ -39,7 +39,7 @@ class LinearFeatureBaseline(nn.Module):
 		returns = episodes.returns.flatten()
 
 		# TD return
-		returns = episodes.gae(_values).flatten() + values
+		# returns = episodes.gae(_values).flatten() + values
 
 		loss = F.mse_loss(returns, values)
 		self.optimizer.zero_grad()
@@ -49,7 +49,11 @@ class LinearFeatureBaseline(nn.Module):
 
 	def fit(self, episodes):
 		# sequence_length * batch_size x feature_size
-		featmat = self._feature(episodes).view(-1, self.feature_size)
+		features = self.feature(episodes).to(self.linear.weight.device)
+		values = self.linear(features).flatten()
+		loss = F.mse_loss(episodes.returns.flatten(), values)
+
+		featmat = features.view(-1, self.feature_size)
 		# sequence_length * batch_size x 1
 		returns = episodes.returns.view(-1, 1)
 
@@ -71,7 +75,7 @@ class LinearFeatureBaseline(nn.Module):
 			                   'matrix) is not full-rank, regardless of the regularization '
 			                   '(maximum regularization: {0}).'.format(reg_coeff))
 		self.linear.weight.data = coeffs.data.t()
-		return 0
+		return loss
 
 	def forward(self, episodes):
 		# IBP Lower Bound
@@ -106,17 +110,11 @@ class LinearFeatureBaseline(nn.Module):
 		return l_out, u_out
 	
 	def build_net(self):
-		# if self.MLP:
-		# 	self.linear = nn.Sequential(
-		# 	nn.Linear(self.input_size, self.input_size),
-		# 	nn.ReLU(),
-		# 	nn.Linear(self.input_size, 1)
-		# )
 		if self.MLP:
 			self.linear = nn.Sequential(
-			nn.Linear(self.input_size, self.input_size),
+			nn.Linear(self.feature_size, self.hidden_size),
 			nn.ReLU(),
-			nn.Linear(self.input_size, 1)
+			nn.Linear(self.hidden_size, 1)
 		)
 		else:
 			# Duan et al 2016a
@@ -134,7 +132,6 @@ class LinearFeatureBaseline(nn.Module):
 			self.feature = self._feature
 		elif isinstance(self.linear, nn.Sequential):
 			print("mlpfeature")
-			# self.feature = self._MLPfeature
 			self.feature = self._feature
 		else:
 			print("not a valid extractor")
