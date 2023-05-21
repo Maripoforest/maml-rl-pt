@@ -122,7 +122,9 @@ class HalfCheetahDirEnv(HalfCheetahEnv):
 		return (observation, reward, done, infos)
 
 	def sample_tasks(self, num_tasks):
-		directions = 2 * self.np_random.binomial(1, p=0.5, size=(num_tasks,)) - 1
+		# directions = 2 * self.np_random.binomial(1, p=0.5, size=(num_tasks,)) - 1
+		directions = np.array([1, -1,  1, -1,  1,  1, -1, -1,  1, -1, -1,  1,  1,  1,  1, -1,  1,  1,  1, -1, -1, -1, -1, -1,  1,  1, -1,  1,
+			 					 -1, -1, -1, -1,  1, -1,  1,  1, -1,  1, -1, 1])
 		tasks = [{'direction': direction} for direction in directions]
 		return tasks
 

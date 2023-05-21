@@ -45,8 +45,11 @@ class BatchSampler:
 	def build_sampler(self):
 		if self.epsilon == 0:
 			self.sample = self.sample_without_per
+			print("using normal training")
+
 		else:
 			self.sample = self.sample_with_per
+			print("using adv training")
 
 	def sample_without_per(self, policy, params=None, gamma=0.95, device='cpu'):
 		"""
