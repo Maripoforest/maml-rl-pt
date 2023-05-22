@@ -67,7 +67,7 @@ def main(args):
 
 	for batch in trange(args.num_batches): # number of epoches
 
-		tasks = sampler.sample_tasks(num_tasks=args.meta_batch_size)
+		tasks = sampler.sample_tasks(task_rand[batch])
 		episodes = metalearner.sample(tasks, first_order=args.first_order)
 
 		metalearner.step(episodes, max_kl=args.max_kl, cg_iters=args.cg_iters,

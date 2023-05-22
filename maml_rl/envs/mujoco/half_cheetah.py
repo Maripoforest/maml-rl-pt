@@ -121,9 +121,13 @@ class HalfCheetahDirEnv(HalfCheetahEnv):
 		             reward_ctrl=-ctrl_cost, task=self._task)
 		return (observation, reward, done, infos)
 
+	# def sample_tasks(self, num_tasks):
+	# 	directions = 2 * self.np_random.binomial(1, p=0.5, size=(num_tasks,)) - 1
+	# 	tasks = [{'direction': direction} for direction in directions]
+	# 	return tasks
+
 	def sample_tasks(self, num_tasks):
-		directions = 2 * self.np_random.binomial(1, p=0.5, size=(num_tasks,)) - 1
-		tasks = [{'direction': direction} for direction in directions]
+		tasks = [{'direction': direction} for direction in num_tasks]
 		return tasks
 
 	def reset_task(self, task):
