@@ -27,23 +27,30 @@ def main(args):
 	seed = 5
 	np.random.seed(seed)
 	task_rand = 2 * np.random.binomial(1, p=0.5, size=(1500, args.meta_batch_size)) - 1
+
+	wandb.init(project="maml",
+	    config={
+		    "lr": args.critic_lr,
+		    "cg_damping": args.cg_damping,
+		    "mlp": args.mlp,
+		    "epsilon": args.epsilon
+		})
+
 	# TODO
 	continuous_actions = (args.env_name in ['AntVel-v1', 'AntDir-v1',
 	                                        'AntPos-v0', 'HalfCheetahVel-v1', 'HalfCheetahDir-v1',
 	                                        '2DNavigation-v0'])
-	
-	bsl = "MLP_" if args.mlp else "Linear_"
-	adv = "noadv" if args.epsilon==0 else "adv{0}".format(args.epsilon)
-	args.output_folder = bsl + adv + "-run"
+
+	args.output_folder = args.env_name + "-run"
 
 	save_folder = './saves/{0}'.format(args.output_folder)
-	if save_folder.endswith("_"):
-			save_folder = save_folder[:-1]
+	if folder_name.endswith("_"):
+			folder_name = folder_name[:-1]
 	serial_number = 1
-	new_folder_name = f"{save_folder}_{serial_number}"
+	new_folder_name = f"{folder_name}_{serial_number}"
 	while os.path.exists(new_folder_name):
 		serial_number += 1
-		new_folder_name = f"{save_folder}_{serial_number}"
+		new_folder_name = f"{folder_name}_{serial_number}"
 	save_folder = new_folder_name
 
 	if not os.path.exists(save_folder):
@@ -56,19 +63,11 @@ def main(args):
 		json.dump(config, f, indent=2)
 		print(config)
 
-	wandb.init(project="maml",
-	    name=f"{args.output_folder}_{serial_number}",
-	    config={
-		    "lr": args.critic_lr,
-		    "cg_damping": args.cg_damping,
-		    "mlp": args.mlp,
-		    "epsilon": args.epsilon
-		})
-
 	sampler = BatchSampler(args.env_name, 
 						batch_size=args.fast_batch_size, 
 						num_workers=args.num_workers, 
-						epsilon=args.epsilon)
+						epsilon=args.epsilon,
+		                is_testing=True)
 
 	if continuous_actions:
 		policy = NormalMLPPolicy(
@@ -87,27 +86,14 @@ def main(args):
 
 	metalearner = MetaLearner(sampler, policy, baseline, gamma=args.gamma,
 	                          fast_lr=args.fast_lr, tau=args.tau, device=args.device)
-
-	for batch in trange(args.num_batches): # number of epoches
-
-		tasks = sampler.sample_tasks(task_rand[batch])
-		episodes, value_losses = metalearner.sample(tasks, first_order=args.first_order)
-
-		metalearner.step(episodes, max_kl=args.max_kl, cg_iters=args.cg_iters,
-		                 cg_damping=args.cg_damping, ls_max_steps=args.ls_max_steps,
-		                 ls_backtrack_ratio=args.ls_backtrack_ratio)
-
-		# WandB
-		wandb.log({"reward_before_update": total_rewards([ep.rewards for ep, _ in episodes]),
-	     			"reward_after_update":	total_rewards([ep.rewards for _, ep in episodes]),
-				     "value_loss": value_losses
-				})
-
-		# # Save policy network
-		with open(os.path.join(save_folder, 'policy-{0}.pt'.format(batch)), 'wb') as f:
-			torch.save(policy.state_dict(), f)
-		with open(os.path.join(save_folder, 'value-{0}.pt'.format(batch)), 'wb') as f:
-			torch.save(baseline.linear.state_dict(), f)
+	tasks = sampler.sample_tasks(task_rand[0])
+	episodes, value_losses = metalearner.sample(tasks, first_order=args.first_order)
+	metalearner.step(episodes, max_kl=args.max_kl, cg_iters=args.cg_iters,
+                        cg_damping=args.cg_damping, ls_max_steps=args.ls_max_steps,
+                        ls_backtrack_ratio=args.ls_backtrack_ratio)
+	
+	print("reward_before_update:", total_rewards([ep.rewards for ep, _ in episodes]))
+	print("reward_after_update:", total_rewards([ep.rewards for _, ep in episodes]))
 
 
 if __name__ == '__main__':
