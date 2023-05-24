@@ -32,7 +32,7 @@ def main(args):
 	                                        'AntPos-v0', 'HalfCheetahVel-v1', 'HalfCheetahDir-v1',
 	                                        '2DNavigation-v0'])
 	
-	bsl = "MLP_" if args.mlp else "Linear_"
+	bsl = "MLP-" if args.mlp else "Linear_"
 	adv = "noadv" if args.epsilon==0 else "adv{0}".format(args.epsilon)
 	args.output_folder = bsl + adv + "-run"
 
@@ -83,7 +83,9 @@ def main(args):
 
 	baseline = LinearFeatureBaseline(input_size=int(np.prod(sampler.envs.observation_space.shape)), 
 				  					is_mlp=args.mlp, 
-									lr=args.critic_lr)
+									lr=args.critic_lr,
+									eps=args.epsilon,
+									is_bounded=args.is_bounded)
 
 	metalearner = MetaLearner(sampler, policy, baseline, gamma=args.gamma,
 	                          fast_lr=args.fast_lr, tau=args.tau, device=args.device)
@@ -163,8 +165,10 @@ if __name__ == '__main__':
 	                    help='lr for the critic network')
 	parser.add_argument('--epsilon', type=float, default=0,
 	                    help='epsilon for l_inf perturbation, 0 for no per')
-	parser.add_argument('--mlp', type=float, default=1,
+	parser.add_argument('--mlp', type=int, default=1,
 	                    help='to use mlp or linear fitting')
+	parser.add_argument('--is-bounded', type=int, default=0,
+	                    help='to bound the model or not')
 
 	# Miscellaneous
 	parser.add_argument('--output-folder', type=str, default='HalfCheetahDir-v1',

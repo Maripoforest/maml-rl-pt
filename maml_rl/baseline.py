@@ -13,15 +13,19 @@ class LinearFeatureBaseline(nn.Module):
 		(https://arxiv.org/abs/1604.06778)
 	"""
 
-	def __init__(self, input_size, reg_coeff=1e-5, is_mlp=True, lr=1e-5):
+	def __init__(self, input_size, reg_coeff=1e-5, is_mlp=True, lr=1e-5, eps=0, is_bounded=False):
 		super(LinearFeatureBaseline, self).__init__()
 		self.input_size = input_size
 		self.hidden_size = 32
 		self._reg_coeff = reg_coeff
 		self.MLP = is_mlp
+		self.epsilon = eps
+		self.bounded = is_bounded
+
 		self.build_feature_extractor()
 		self.build_optimizer()
-		self.epsilon = 0.1
+		self.build_forward()
+		
 		self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
 
 	def build_optimizer(self):
@@ -77,37 +81,42 @@ class LinearFeatureBaseline(nn.Module):
 		self.linear.weight.data = coeffs.data.t()
 		return loss
 
-	def forward(self, episodes):
-		# IBP Lower Bound
-		# =================================
-		# out = torch.empty((0,))
-		# out_ep = torch.empty((0,))
-		# for feature_ep in features:
-		# 	for feature_worker in feature_ep:
-		# 		l, u =  self.compute_bounds(feature_worker, layer=self.linear)
-		# 		out_ep = torch.cat((out_ep, l.unsqueeze(0)))
-		# 	out = torch.cat((out, out_ep.unsqueeze(0)))
-		# 	out_ep = torch.empty((0,))
-		# value = out
-		# =================================
+	def build_forward(self):
+		if self.bounded == True:
+			self._forward = self.bounded_forward
+		else:
+			self._forward = self.linear
+			
+	def bounded_forward(self, features):
+		l, u = self.compute_bounds(features)
+		return l
 
+	def forward(self, episodes):
+		
 		features = self.feature(episodes)
-		values = self.linear(features)
+		values = self._forward(features)
 		return values
 
-	def compute_bounds(self, x_bounds, layer):
-		l = torch.full_like(x_bounds, -self.epsilon)
-		u = torch.full_like(x_bounds, self.epsilon)
+	def compute_bounds(self, x_bounds):
+		l = torch.full_like(x_bounds, -self.epsilon).to(device='cuda')
+		u = torch.full_like(x_bounds, self.epsilon).to(device='cuda')
 		l += x_bounds
 		u += x_bounds
-		# l.to(torch.device('cuda'))
-		# u.to(torch.device('cuda'))
-		W, b = layer.weight, layer.bias
-		# l_out = torch.matmul(W.clamp(min=0), l) + torch.matmul(W.clamp(max=0), u) + b
-		# u_out = torch.matmul(W.clamp(min=0), u) + torch.matmul(W.clamp(max=0), l) + b
-		l_out = torch.matmul(W.clamp(min=0), l) + torch.matmul(W.clamp(max=0), u)
-		u_out = torch.matmul(W.clamp(min=0), u) + torch.matmul(W.clamp(max=0), l)
-		return l_out, u_out
+		l = l.view(-1, self.feature_size)
+		u = u.view(-1, self.feature_size)
+		for layer in self.linear:
+			if isinstance(layer, nn.Linear):	
+				W, b = layer.weight.t(), layer.bias.t()
+				l_out = torch.matmul(l, W.clamp(min=0)) + torch.matmul(u, W.clamp(max=0)) + b
+				u_out = torch.matmul(l, W.clamp(min=0)) + torch.matmul(l, W.clamp(max=0)) + b
+			else:
+				l_out = layer(l)
+				u_out = layer(u)
+			l = l_out
+			u = u_out
+		l = l.view(x_bounds.size(0), x_bounds.size(1), 1)
+		u = u.view(x_bounds.size(0), x_bounds.size(1), 1)
+		return l, u
 	
 	def build_net(self):
 		if self.MLP:
@@ -132,21 +141,32 @@ class LinearFeatureBaseline(nn.Module):
 			self.feature = self._feature
 		elif isinstance(self.linear, nn.Sequential):
 			print("mlpfeature")
-			self.feature = self._feature
+			if not self.epsilon==0:
+				print("adv training")
+				if self.bounded:
+					print("bounded")
+					self.feature = self._bounded_feature
+				else:
+					print("no bound")
+					self.feature = self._feature
+			else:
+				print("no adv")
+				self.feature = self._feature
 		else:
 			print("not a valid extractor")
 
 	def _feature(self, episodes):
 		ones = episodes.mask.unsqueeze(2)
 		observations = episodes.observations * ones
-		# observations = episodes.nopertobs * ones
 		cum_sum = torch.cumsum(ones, dim=0) * ones
 		al = cum_sum / 100.0
 		return torch.cat([observations, observations ** 2,
 		                  al, al ** 2, al ** 3, ones], dim=2)
 	
-	def _MLPfeature(self, episodes):
+	def _bounded_feature(self, episodes):
 		ones = episodes.mask.unsqueeze(2)
-		observations = episodes.observations * ones
-		# observations = episodes.nopertobs * ones
-		return observations
+		observations = episodes.nopertobs * ones
+		cum_sum = torch.cumsum(ones, dim=0) * ones
+		al = cum_sum / 100.0
+		return torch.cat([observations, observations ** 2,
+		                  al, al ** 2, al ** 3, ones], dim=2)
