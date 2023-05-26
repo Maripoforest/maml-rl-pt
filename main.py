@@ -32,9 +32,10 @@ def main(args):
 	                                        'AntPos-v0', 'HalfCheetahVel-v1', 'HalfCheetahDir-v1',
 	                                        '2DNavigation-v0'])
 	
-	bsl = "MLP-" if args.mlp else "Linear_"
+	bsl = "MLP-" if args.mlp else "Linear-"
 	adv = "noadv" if args.epsilon==0 else "adv{0}".format(args.epsilon)
-	args.output_folder = bsl + adv + "-run"
+	bd = "-nobound" if args.is_bounded==0 else "-bounded"
+	args.output_folder = bsl + adv + bd + "-run"
 
 	save_folder = './saves/{0}'.format(args.output_folder)
 	if save_folder.endswith("_"):

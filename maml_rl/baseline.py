@@ -83,8 +83,10 @@ class LinearFeatureBaseline(nn.Module):
 
 	def build_forward(self):
 		if self.bounded == True:
+			print("using bounded forward")
 			self._forward = self.bounded_forward
 		else:
+			print("using normal forward")
 			self._forward = self.linear
 			
 	def bounded_forward(self, features):
@@ -108,7 +110,7 @@ class LinearFeatureBaseline(nn.Module):
 			if isinstance(layer, nn.Linear):	
 				W, b = layer.weight.t(), layer.bias.t()
 				l_out = torch.matmul(l, W.clamp(min=0)) + torch.matmul(u, W.clamp(max=0)) + b
-				u_out = torch.matmul(l, W.clamp(min=0)) + torch.matmul(l, W.clamp(max=0)) + b
+				u_out = torch.matmul(u, W.clamp(min=0)) + torch.matmul(l, W.clamp(max=0)) + b
 			else:
 				l_out = layer(l)
 				u_out = layer(u)
@@ -144,10 +146,10 @@ class LinearFeatureBaseline(nn.Module):
 			if not self.epsilon==0:
 				print("adv training")
 				if self.bounded:
-					print("bounded")
+					print("bounded feature")
 					self.feature = self._bounded_feature
 				else:
-					print("no bound")
+					print("normal feature")
 					self.feature = self._feature
 			else:
 				print("no adv")
