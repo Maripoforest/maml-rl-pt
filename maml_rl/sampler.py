@@ -90,7 +90,6 @@ class BatchSampler:
 				actions = actions_tensor.cpu().numpy()
 
 			new_observations, rewards, dones, new_batch_ids, _ = self.envs.step(actions)
-			print(rewards.shape)
 			# here is observations NOT new_observations, batch_ids NOT new_batch_ids
 			episodes.append(observations, nopertobs, actions, rewards, batch_ids)
 			observations, batch_ids = new_observations, new_batch_ids

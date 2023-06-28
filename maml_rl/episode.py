@@ -88,7 +88,6 @@ class BatchEpisodes:
 	def mask(self):
 		if self._mask is None:
 			mask = np.zeros((len(self), self.batch_size), dtype=np.float32)
-			# print(mask.shape)
 			for i in range(self.batch_size):
 				length = len(self._actions_list[i])
 				mask[:length, i] = 1.0
@@ -122,7 +121,6 @@ class BatchEpisodes:
 			self._observations_list[batch_id].append(observation.astype(np.float32))
 			self._actions_list[batch_id].append(action.astype(np.float32))
 			self._rewards_list[batch_id].append(reward.astype(np.float32))
-			print(self._rewards_list[batch_id])
 			self._nopertobs_list[batch_id].append(nopertobs.astype(np.float32))
 
 	def __len__(self):
