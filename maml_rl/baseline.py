@@ -35,15 +35,11 @@ class LinearFeatureBaseline(nn.Module):
 			self.update = self.fit
 
 	def nnstep(self, episodes):
-		_values = self.forward(episodes)
-		# _values.requires_grad_()
-		values = _values.flatten()
+		features = self._feature(episodes)
+		values = self.linear(features).flatten()
 
 		# Bellman return
 		returns = episodes.returns.flatten()
-
-		# TD return
-		# returns = episodes.gae(_values).flatten() + values
 
 		loss = F.mse_loss(returns, values)
 		self.optimizer.zero_grad()
@@ -53,7 +49,7 @@ class LinearFeatureBaseline(nn.Module):
 
 	def fit(self, episodes):
 		# sequence_length * batch_size x feature_size
-		features = self.feature(episodes).to(self.linear.weight.device)
+		features = self._feature(episodes).to(self.linear.weight.device)
 		values = self.linear(features).flatten()
 		loss = F.mse_loss(episodes.returns.flatten(), values)
 
@@ -94,7 +90,6 @@ class LinearFeatureBaseline(nn.Module):
 		return l
 
 	def forward(self, episodes):
-		
 		features = self.feature(episodes)
 		values = self._forward(features)
 		return values
@@ -126,7 +121,9 @@ class LinearFeatureBaseline(nn.Module):
 		if self.MLP:
 			self.linear = nn.Sequential(
 			nn.Linear(self.feature_size, self.hidden_size),
-			nn.ReLU(),
+			nn.LeakyReLU(0.1),
+			nn.Linear(self.hidden_size, self.hidden_size),
+			nn.LeakyReLU(0.1),
 			nn.Linear(self.hidden_size, 1)
 		)
 		else:
@@ -140,24 +137,12 @@ class LinearFeatureBaseline(nn.Module):
 
 	def build_feature_extractor(self):
 		self.build_net()
-		if isinstance(self.linear, nn.Linear):
-			print("linearfeature")
-			self.feature = self._feature
-		elif isinstance(self.linear, nn.Sequential):
-			print("mlpfeature")
-			if not self.epsilon==0:
-				print("adv training")
-				if self.bounded:
-					print("bounded feature")
-					self.feature = self._bounded_feature
-				else:
-					print("normal feature")
-					self.feature = self._feature
-			else:
-				print("no adv")
-				self.feature = self._feature
+		if self.bounded:
+			print("using bounded feature")
+			self.feature = self._bounded_feature
 		else:
-			print("not a valid extractor")
+			print("using normal feature")
+			self.feature = self._feature
 
 	def _feature(self, episodes):
 		ones = episodes.mask.unsqueeze(2)

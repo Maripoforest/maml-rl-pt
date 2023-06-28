@@ -5,6 +5,7 @@ import torch
 import json
 from tqdm import trange
 import wandb
+import time
 
 from maml_rl.metalearner import MetaLearner
 from maml_rl.policies import CategoricalMLPPolicy, NormalMLPPolicy
@@ -42,14 +43,7 @@ def main(args):
 	args.output_folder = bsl + adv + bd + args.env_name + "-run"
 
 	save_folder = './saves/{0}'.format(args.output_folder)
-	if save_folder.endswith("_"):
-			save_folder = save_folder[:-1]
-	serial_number = 1
-	new_folder_name = f"{save_folder}_{serial_number}"
-	while os.path.exists(new_folder_name):
-		serial_number += 1
-		new_folder_name = f"{save_folder}_{serial_number}"
-	save_folder = new_folder_name
+	save_folder = save_folder + '-' + str(int(time.time()))
 
 	if not os.path.exists(save_folder):
 		os.makedirs(save_folder)
@@ -62,7 +56,7 @@ def main(args):
 		print(config)
 
 	wandb.init(project="maml",
-	    name=f"{args.output_folder}_{serial_number}",
+	    name=save_folder,
 	    config={
 		    "lr": args.critic_lr,
 		    "cg_damping": args.cg_damping,
