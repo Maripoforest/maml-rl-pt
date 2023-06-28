@@ -82,14 +82,15 @@ class BatchSampler:
 				# perturbations = np.random.uniform(-0.1, 0.1, observations.shape)
 				# observations += perturbations
 				# =======================
-				
 				observations_tensor = torch.from_numpy(observations).to(device=device)
+				
 				# forward via policy network
 				# policy network will return Categorical(logits=logits)
 				actions_tensor = policy(observations_tensor, params=params).sample()
 				actions = actions_tensor.cpu().numpy()
 
 			new_observations, rewards, dones, new_batch_ids, _ = self.envs.step(actions)
+			print(rewards.shape)
 			# here is observations NOT new_observations, batch_ids NOT new_batch_ids
 			episodes.append(observations, nopertobs, actions, rewards, batch_ids)
 			observations, batch_ids = new_observations, new_batch_ids
@@ -124,8 +125,13 @@ class BatchSampler:
 
 				# Perturbed model
 				# =======================
-				perturbations = np.random.uniform(-self.epsilon, self.epsilon, observations.shape)
-				observations += perturbations
+				# perturbations = np.random.uniform(-self.epsilon, self.epsilon, observations.shape)
+				# print(observations.shape)
+				# print(type(observations[0][0]))
+				perturbations = np.random.choice([1-self.epsilon, 1+self.epsilon], p=[0.5, 0.5], size=observations.shape)
+				observations = np.multiply(perturbations, observations).astype(np.float32)
+				# print(observations)
+				# print(type(observations[0][0]))
 				# =======================
 				
 				observations_tensor = torch.from_numpy(observations).to(device=device)

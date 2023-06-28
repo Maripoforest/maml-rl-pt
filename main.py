@@ -26,16 +26,20 @@ def main(args):
 	args.output_folder = args.env_name
 	seed = 5
 	np.random.seed(seed)
-	task_rand = 2 * np.random.binomial(1, p=0.5, size=(1500, args.meta_batch_size)) - 1
+	if args.env_name == "HalfCheetahVel-v1":
+		task_rand = np.random.uniform(0.0, 2.0, size=(args.num_batches, args.meta_batch_size))
+	else:
+		task_rand = 2 * np.random.binomial(1, p=0.5, size=(args.num_batches, args.meta_batch_size)) - 1
+
 	# TODO
 	continuous_actions = (args.env_name in ['AntVel-v1', 'AntDir-v1',
 	                                        'AntPos-v0', 'HalfCheetahVel-v1', 'HalfCheetahDir-v1',
 	                                        '2DNavigation-v0'])
-	
+	print(args.env_name)
 	bsl = "MLP-" if args.mlp else "Linear-"
 	adv = "noadv" if args.epsilon==0 else "adv{0}".format(args.epsilon)
-	bd = "-nobound" if args.is_bounded==0 else "-bounded"
-	args.output_folder = bsl + adv + bd + "-run"
+	bd = "-nobound-" if args.is_bounded==0 else "-bounded-"
+	args.output_folder = bsl + adv + bd + args.env_name + "-run"
 
 	save_folder = './saves/{0}'.format(args.output_folder)
 	if save_folder.endswith("_"):
@@ -94,6 +98,7 @@ def main(args):
 	for batch in trange(args.num_batches): # number of epoches
 
 		tasks = sampler.sample_tasks(task_rand[batch])
+		# tasks = sampler.sample_tasks(args.meta_batch_size)
 		episodes, value_losses = metalearner.sample(tasks, first_order=args.first_order)
 
 		metalearner.step(episodes, max_kl=args.max_kl, cg_iters=args.cg_iters,
@@ -106,7 +111,7 @@ def main(args):
 				     "value_loss": value_losses
 				})
 
-		# # Save policy network
+		# Save policy network
 		with open(os.path.join(save_folder, 'policy-{0}.pt'.format(batch)), 'wb') as f:
 			torch.save(policy.state_dict(), f)
 		with open(os.path.join(save_folder, 'value-{0}.pt'.format(batch)), 'wb') as f:

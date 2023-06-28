@@ -4,6 +4,7 @@ from    torch.distributions.kl import kl_divergence
 
 from    maml_rl.utils.torch_utils import weighted_mean, detach_distribution, weighted_normalize
 from    maml_rl.utils.optimization import conjugate_gradient
+from 	copy import deepcopy
 
 class MetaLearner:
 	"""
@@ -80,7 +81,6 @@ class MetaLearner:
 		for task in tasks:
 			self.sampler.reset_task(task)
 			train_episodes = self.sampler.sample(self.policy, gamma=self.gamma, device=self.device)
-
 			params, value_loss = self.adapt(train_episodes, first_order=first_order)
 			value_losses += value_loss
 			valid_episodes = self.sampler.sample(self.policy, params=params, gamma=self.gamma, device=self.device)

@@ -50,3 +50,4 @@ class NormalMLPPolicy(Policy):
 		scale = torch.exp(torch.clamp(params['sigma'], min=self.min_log_std))
 
 		return Normal(loc=mu, scale=scale)
+	

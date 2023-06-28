@@ -5,6 +5,7 @@ import torch
 import json
 from tqdm import trange
 import wandb
+import pickle
 
 from maml_rl.metalearner import MetaLearner
 from maml_rl.policies import CategoricalMLPPolicy, NormalMLPPolicy
@@ -25,6 +26,7 @@ def main(args):
 
     args.output_folder = args.env_name
     seed = 5
+    rwd = [[], [], []]
     np.random.seed(seed)
     task_rand = 2 * np.random.binomial(1, p=0.5, size=(1500, args.meta_batch_size)) - 1
 	# TODO
@@ -36,7 +38,7 @@ def main(args):
                         batch_size=args.fast_batch_size, 
                         num_workers=args.num_workers, 
                         epsilon=args.epsilon)
-
+    print(np.prod(sampler.envs.observation_space.shape)), int(np.prod(sampler.envs.action_space.shape))
     if continuous_actions:
         policy = NormalMLPPolicy(
         int(np.prod(sampler.envs.observation_space.shape)), # input shape
@@ -53,9 +55,11 @@ def main(args):
                                     lr=args.critic_lr,
                                     eps=args.epsilon,
                                     is_bounded=args.is_bounded)
-
-    path_to_policy = "/home/ward/maml-rl-pt/saves/MLP-noadv-nobound-run_1/policy-950.pt"
-    path_to_value = "/home/ward/maml-rl-pt/saves/MLP-noadv-nobound-run_1/value-950.pt"
+    
+    path_to_policy = "/home/xiangmin/maml-rl-pt/MLP-noadv-nobound-run_2/policy-1499.pt"
+    path_to_value = "/home/xiangmin/maml-rl-pt/MLP-noadv-nobound-run_2/value-1499.pt"
+    # path_to_policy = "/home/xiangmin/maml-rl-pt/saves/MLP-adv0.2-bounded-HalfCheetahDir-v1-run_1/policy-1499.pt"
+    # path_to_value = "/home/xiangmin/maml-rl-pt/saves/MLP-adv0.2-bounded-HalfCheetahDir-v1-run_1/value-1499.pt"
     policy_state_dict = torch.load(path_to_policy)
     baseline_state_dict = torch.load(path_to_value)
     policy.load_state_dict(policy_state_dict)
@@ -78,6 +82,13 @@ def main(args):
 	     			"reward_after_update: ", total_rewards([ep.rewards for _, ep in episodes]),
 				    "value_loss: ", value_losses
 			    )
+        
+        rwd[0].append(total_rewards([ep.rewards for ep, _ in episodes]))
+        rwd[1].append(total_rewards([ep.rewards for _, ep in episodes]))
+        rwd[2].append(value_losses)
+    
+    with open('test.pkl', 'wb') as file:
+    	pickle.dump(rwd, file)
 
 
 
