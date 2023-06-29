@@ -124,11 +124,12 @@ class BatchSampler:
 
 				# Perturbed model
 				# =======================
-				# perturbations = np.random.uniform(-self.epsilon, self.epsilon, observations.shape)
+				perturbations = np.random.uniform(-self.epsilon, self.epsilon, observations.shape)
+				observations += perturbations
 				# print(observations.shape)
 				# print(type(observations[0][0]))
-				perturbations = np.random.choice([1-self.epsilon, 1+self.epsilon], p=[0.5, 0.5], size=observations.shape)
-				observations = np.multiply(perturbations, observations).astype(np.float32)
+				# perturbations = np.random.choice([1-self.epsilon, 1+self.epsilon], p=[0.5, 0.5], size=observations.shape)
+				# observations = np.multiply(perturbations, observations).astype(np.float32)
 				# print(observations)
 				# print(type(observations[0][0]))
 				# =======================

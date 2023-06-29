@@ -35,7 +35,7 @@ class LinearFeatureBaseline(nn.Module):
 			self.update = self.fit
 
 	def nnstep(self, episodes):
-		features = self._feature(episodes)
+		features = self.feature(episodes)
 		values = self.linear(features).flatten()
 
 		# Bellman return
@@ -49,7 +49,7 @@ class LinearFeatureBaseline(nn.Module):
 
 	def fit(self, episodes):
 		# sequence_length * batch_size x feature_size
-		features = self._feature(episodes).to(self.linear.weight.device)
+		features = self.feature(episodes).to(self.linear.weight.device)
 		values = self.linear(features).flatten()
 		loss = F.mse_loss(episodes.returns.flatten(), values)
 
@@ -95,12 +95,16 @@ class LinearFeatureBaseline(nn.Module):
 		return values
 
 	def compute_bounds(self, x_bounds):
-		# l = torch.full_like(x_bounds, -self.epsilon).to(device='cuda')
-		# u = torch.full_like(x_bounds, self.epsilon).to(device='cuda')
-		l = torch.full_like(x_bounds, 1-self.epsilon).to(device='cuda')
-		u = torch.full_like(x_bounds, 1+self.epsilon).to(device='cuda')
-		l = torch.multiply(x_bounds, l)
-		u = torch.multiply(x_bounds, u)
+		l = torch.full_like(x_bounds, -self.epsilon).to(device='cuda')
+		u = torch.full_like(x_bounds, self.epsilon).to(device='cuda')
+		l += x_bounds
+		u += x_bounds
+
+		# l = torch.full_like(x_bounds, 1-self.epsilon).to(device='cuda')
+		# u = torch.full_like(x_bounds, 1+self.epsilon).to(device='cuda')
+		# l = torch.multiply(x_bounds, l)
+		# u = torch.multiply(x_bounds, u)
+		
 		l = l.view(-1, self.feature_size)
 		u = u.view(-1, self.feature_size)
 		for layer in self.linear:
